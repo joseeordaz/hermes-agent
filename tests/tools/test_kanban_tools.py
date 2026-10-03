@@ -683,6 +683,31 @@ def test_create_happy_path(worker_env):
         conn.close()
 
 
+@pytest.mark.parametrize("effort", ["low", "max", "ultra", "none", None])
+def test_create_persists_per_task_reasoning_through_registered_tool(worker_env, effort):
+    from hermes_constants import VALID_REASONING_EFFORTS
+    from hermes_cli import kanban_db as kb
+    from hermes_cli import kanban_db_connect as kbc
+    from tools import kanban_tools as kt
+    from tools.registry import registry
+
+    choices = kt.KANBAN_CREATE_SCHEMA["parameters"]["properties"]["reasoning_effort"]["enum"]
+    assert set(VALID_REASONING_EFFORTS).issubset(choices)
+    assert "none" in choices
+    args = {"title": "reasoning task", "assignee": "peer"}
+    if effort is not None:
+        args["reasoning_effort"] = effort
+    raw = registry.dispatch("kanban_create", args)
+    assert isinstance(raw, str)
+    created = json.loads(raw)
+    assert created["ok"] is True, created
+    assert created["reasoning_effort"] == effort
+    with kbc.connect_closing() as conn:
+        task = kb.get_task(conn, created["task_id"])
+        assert task is not None
+        assert task.reasoning_effort == effort
+
+
 @pytest.mark.parametrize("explicit", [{"workspace_kind": "scratch"}, {"project": ""}])
 @pytest.mark.parametrize("target_scoped", [False, True])
 def test_create_explicit_scratch_ignores_ambient_board_project(
