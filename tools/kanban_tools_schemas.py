@@ -531,6 +531,15 @@ KANBAN_CREATE_SCHEMA = _schema(
                 "Omit to inherit the assignee profile's configured level."
             ),
         },
+        "review_reasoning_effort": {
+            "type": "string",
+            "enum": ["none", *VALID_REASONING_EFFORTS],
+            "description": (
+                "Reasoning effort for the review-phase run only, set by the "
+                "card's creator rather than the implementer. Omit to review at "
+                "'reasoning_effort' (or the reviewer profile's level)."
+            ),
+        },
     },
     ["title", "assignee"],
 )

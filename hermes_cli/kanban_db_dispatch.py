@@ -2120,6 +2120,9 @@ def _dispatch_lane_task(
         # Force-load sdlc-review; the kanban lifecycle is already in every
         # worker's system prompt via KANBAN_GUIDANCE.
         claimed.skills = list(dict.fromkeys([*(claimed.skills or []), "sdlc-review"]))
+        # In-memory only: the stored reasoning_effort still drives the implementer
+        # run when request_changes routes the card back.
+        claimed.reasoning_effort = claimed.review_reasoning_effort or claimed.reasoning_effort
     try:
         pid = _call_spawn_fn(spawn_fn if spawn_fn is not None else _default_spawn, claimed, str(workspace), board)
         if pid:

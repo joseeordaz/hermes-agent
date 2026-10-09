@@ -685,6 +685,43 @@ def test_review_dispatch_preserves_task_skills_and_adds_reviewer_skill(
     assert captured == [["domain-specific-review", "sdlc-review"]]
 
 
+def test_review_dispatch_uses_creator_review_reasoning_without_overwriting_implementer(
+    kanban_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hermes_cli.config as cfgmod
+    import hermes_cli.profiles as profmod
+
+    monkeypatch.setattr(profmod, "profile_exists", lambda name: True)
+    monkeypatch.setattr(
+        cfgmod, "load_config", lambda *args, **kwargs: {"kanban": {"review_dispatch": True}},
+    )
+    monkeypatch.setattr(kbd, "check_respawn_guard", lambda _conn, _task_id, **_kw: None)
+    captured: list[str | None] = []
+
+    def spawn(task, workspace):
+        captured.append(task.reasoning_effort)
+        return None
+
+    with kbc.connect() as conn:
+        task_id = kb.create_task(
+            conn, title="fiscal change", assignee="coder",
+            reasoning_effort="high", review_reasoning_effort="xhigh",
+        )
+        implementation = kb.claim_task(conn, task_id)
+        assert implementation is not None
+        assert kb.request_review(
+            conn, task_id, summary="ready", reviewer="reviewer",
+            expected_run_id=implementation.current_run_id,
+        )
+        result = kbd.dispatch_once(conn, spawn_fn=spawn)
+        stored = kb.get_task(conn, task_id)
+
+    assert task_id in [task[0] for task in result.spawned]
+    assert captured == ["xhigh"]
+    assert stored is not None
+    assert (stored.reasoning_effort, stored.review_reasoning_effort) == ("high", "xhigh")
+
+
 def test_review_dispatch_honors_global_and_per_profile_caps(
     kanban_home: Path,
     monkeypatch: pytest.MonkeyPatch,

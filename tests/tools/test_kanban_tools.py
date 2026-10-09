@@ -697,15 +697,18 @@ def test_create_persists_per_task_reasoning_through_registered_tool(worker_env, 
     args = {"title": "reasoning task", "assignee": "peer"}
     if effort is not None:
         args["reasoning_effort"] = effort
+        args["review_reasoning_effort"] = effort
     raw = registry.dispatch("kanban_create", args)
     assert isinstance(raw, str)
     created = json.loads(raw)
     assert created["ok"] is True, created
     assert created["reasoning_effort"] == effort
+    assert created["review_reasoning_effort"] == effort
     with kbc.connect_closing() as conn:
         task = kb.get_task(conn, created["task_id"])
         assert task is not None
         assert task.reasoning_effort == effort
+        assert task.review_reasoning_effort == effort
 
 
 @pytest.mark.parametrize("explicit", [{"workspace_kind": "scratch"}, {"project": ""}])
